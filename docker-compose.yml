@@ -1,0 +1,43 @@
+version: '0.1'
+
+services:
+  postgres:
+    container_name: ads-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - $PWD/tmp/sockets:/var/run/postgresql
+    image: postgres:14.1
+    user: postgres
+    healthcheck:
+      test: ["CMD", "pg_isready -U $POSTGRES_USER"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    restart: always
+    environment:
+      - PGUSER=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${ADS_DATABASE_PASSWORD}
+      - POSTGRES_DB=ads_backend_development
+  backend:
+    container_name: ads-backend
+    build: https://github.com/MikhailVerbitski/ads-backend.git#main
+    stdin_open: true
+    tty: true
+    ports:
+      - "3000:3000"
+    command: /bin/sh -c "rm -f /rails/tmp/pids/server.pid && rails s -b 0.0.0.0 -p 3000"
+    links:
+      - postgres
+    volumes:
+      - $PWD/tmp/sockets:/tmp/sockets
+  front:
+    container_name: ads-front
+    build: https://github.com/MikhailVerbitski/ads-client.git#main
+    stdin_open: true
+    tty: true
+    ports:
+      - "8080:8080"
+    links:
+      - postgres
